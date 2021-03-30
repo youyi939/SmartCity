@@ -38,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
         navView.setSelectedItemId(R.id.navigation_home);
         replaceFragment(homeFragment);
 
+        //底部BottomNavigationView的点击事件
         navView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {

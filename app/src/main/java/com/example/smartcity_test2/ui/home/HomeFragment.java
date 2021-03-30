@@ -20,12 +20,15 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
+import androidx.viewpager.widget.ViewPager;
 
 import com.example.smartcity_test2.MainActivity;
 import com.example.smartcity_test2.R;
 import com.example.smartcity_test2.ui.home.adapter.listView.ListViewAdapter;
 import com.example.smartcity_test2.ui.home.adapter.recyclerView.RecyclerAdapter_Label;
 import com.example.smartcity_test2.ui.home.adapter.recyclerView.RecyclerAdapter_Service;
+import com.example.smartcity_test2.ui.home.adapter.viewPager.MyAdapter;
+import com.example.smartcity_test2.ui.home.pojo.Img;
 import com.example.smartcity_test2.ui.home.pojo.Item;
 import com.example.smartcity_test2.ui.home.pojo.ItemNew;
 import com.example.smartcity_test2.ui.home.pojo.Item_Service;
@@ -36,24 +39,42 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
+
+// TODO: 3/29/21 修改UI界面，pad端每行显示四个热门主题
 public class HomeFragment extends Fragment {
 
     private HomeViewModel homeViewModel;
 
+    //上半部服务块所需对象
     private RecyclerView recyclerView_service;
     private List<Item_Service> itemList = new ArrayList<>();
     private RecyclerAdapter_Service recyclerAdapter_service;
 
+    //底部新闻块所需的对象，recyclerview为label，listView为新闻主体
     private ListView listView;
     private RecyclerView recyclerView_label;
     private List<ItemNew> itemNewList = new ArrayList<>();
     private LinearLayoutManager linearLayoutManager;
     private ListViewAdapter listViewAdapter;
 
+    private ViewPager viewPager;                    //轮播图组件
+    private List<Img> imgList = new ArrayList<>();
+
+
+    /**
+     * 实例化各种对象
+     * @param inflater
+     * @param container
+     * @param savedInstanceState
+     * @return
+     */
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_home, container, false);
@@ -61,11 +82,15 @@ public class HomeFragment extends Fragment {
         recyclerView_service = root.findViewById(R.id.recyclerView_service);
         listView = root.findViewById(R.id.list_view_item);
         recyclerView_label = root.findViewById(R.id.recycler_label);
+        viewPager = root.findViewById(R.id.viewPager);
+
+        //服务块
         linearLayoutManager = new LinearLayoutManager(getContext());
         linearLayoutManager.setOrientation(LinearLayoutManager.HORIZONTAL);
-
         StaggeredGridLayoutManager staggeredGridLayoutManager = new StaggeredGridLayoutManager(5, StaggeredGridLayoutManager.VERTICAL);
         recyclerView_service.setLayoutManager(staggeredGridLayoutManager);
+
+        // TODO: 3/29/21 viewPager设置adapter
 
         return root;
     }
@@ -73,41 +98,14 @@ public class HomeFragment extends Fragment {
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-
         homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
-
     }
 
+
     /**
-     * 1:标签解析完毕
-     * 2:新闻对象加载解析完毕
-     * 3:点击label的点击事件，刷新listview
+     * 该fragment首次create的时候即请求所有数据。
+     * @param savedInstanceState
      */
-    private Handler handler = new Handler() {
-        @Override
-        public void handleMessage(@NonNull Message msg) {
-            switch (msg.what) {
-                case 1:
-                    recyclerAdapter_service = new RecyclerAdapter_Service(itemList, handler);
-                    recyclerView_service.setAdapter(recyclerAdapter_service);
-                    break;
-                case 2:
-                    RecyclerAdapter_Label recyclerAdapter = new RecyclerAdapter_Label(itemNewList, handler);
-                    recyclerView_label.setLayoutManager(linearLayoutManager);
-                    recyclerView_label.setAdapter(recyclerAdapter);
-                    listViewAdapter = new ListViewAdapter(getContext(), R.layout.list_item, itemNewList.get(0).getItemList());
-                    listView.setAdapter(listViewAdapter);
-                    break;
-                case 3:
-                    int position = (int) msg.obj;
-                    listViewAdapter = new ListViewAdapter(getContext(), R.layout.list_item, itemNewList.get(position).getItemList());
-                    listView.setAdapter(listViewAdapter);
-                    break;
-            }
-        }
-    };
-
-
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -195,8 +193,49 @@ public class HomeFragment extends Fragment {
                 }
             }
         }).start();
+
+        //请求+解析轮播图
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String url = "http://124.93.196.45:10002/userinfo/rotation/list?pageNum=1&pageSize=10&type=45";
+                    String json = KenUtils.getJson(url);
+                    JSONObject jsonObject = new JSONObject(json);
+                    JSONArray jsonArray = jsonObject.getJSONArray("rows");
+                    for (int i = 0; i < jsonArray.length() ; i++) {
+                        JSONObject object = jsonArray.getJSONObject(i);
+
+                        // TODO: 3/30/21 目前图片资源不可用，暂时用其他网络图片资源
+//                        String imgUrl = object.getString("imgUrl");             //img地址
+                        String imgUrl = "https://upload-images.jianshu.io/upload_images/15333334-967b259ef70b5667.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp";             //img地址
+                        int sort = object.getInt("sort");                       //排序
+                        int id = object.getInt("id");
+
+                        imgList.add(new Img(id,sort,imgUrl));
+                    }
+
+                    Message message = new Message();
+                    message.what = 4;
+                    handler.sendMessage(message);
+
+                    new Timer().schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            handler.sendEmptyMessage(5);
+                        }
+                    },0,2000);
+
+                } catch (IOException | JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 
+    /**
+     * 从返回栈切回来的时候不再请求数据，而是直接渲染
+     */
     @Override
     public void onStart() {
         super.onStart();
@@ -225,4 +264,48 @@ public class HomeFragment extends Fragment {
             Log.i("Ken1", "onStart: 为空");
         }
     }
+
+
+
+    /**
+     * 1:标签解析完毕
+     * 2:新闻对象加载解析完毕
+     * 3:点击label的点击事件，刷新listview
+     * 4:轮播图图片加载解析完毕
+     * 5:定时器轮播
+     */
+    private Handler handler = new Handler() {
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            switch (msg.what) {
+                case 1:
+                    recyclerAdapter_service = new RecyclerAdapter_Service(itemList, handler);
+                    recyclerView_service.setAdapter(recyclerAdapter_service);
+                    break;
+                case 2:
+                    RecyclerAdapter_Label recyclerAdapter = new RecyclerAdapter_Label(itemNewList, handler);
+                    recyclerView_label.setLayoutManager(linearLayoutManager);
+                    recyclerView_label.setAdapter(recyclerAdapter);
+                    listViewAdapter = new ListViewAdapter(getContext(), R.layout.list_item, itemNewList.get(0).getItemList());
+                    listView.setAdapter(listViewAdapter);
+                    break;
+                case 3:
+                    int position = (int) msg.obj;
+                    listViewAdapter = new ListViewAdapter(getContext(), R.layout.list_item, itemNewList.get(position).getItemList());
+                    listView.setAdapter(listViewAdapter);
+                    break;
+                case 4:
+                    viewPager.setAdapter(new MyAdapter(getContext(),imgList));
+                    break;
+                case 5:
+                    //获得当前的位置
+                    int currentItem = viewPager.getCurrentItem();
+                    //跳转到指定位置
+                    viewPager.setCurrentItem(currentItem + 1);
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
 }

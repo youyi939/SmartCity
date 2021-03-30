@@ -62,6 +62,7 @@ public class AllServiceActivity extends AppCompatActivity {
                         Log.i("Ken", "run: "+item.toString());
                     }
 
+                    //根据ID给list排序
                     itemList.sort(new Comparator<Item_Service>() {
                         @Override
                         public int compare(Item_Service item1, Item_Service item2) {
