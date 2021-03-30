@@ -47,7 +47,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 
-// TODO: 3/29/21 修改UI界面，pad端每行显示四个热门主题
 public class HomeFragment extends Fragment {
 
     private HomeViewModel homeViewModel;
@@ -206,9 +205,7 @@ public class HomeFragment extends Fragment {
                     for (int i = 0; i < jsonArray.length() ; i++) {
                         JSONObject object = jsonArray.getJSONObject(i);
 
-                        // TODO: 3/30/21 目前图片资源不可用，暂时用其他网络图片资源
-//                        String imgUrl = object.getString("imgUrl");             //img地址
-                        String imgUrl = "https://upload-images.jianshu.io/upload_images/15333334-967b259ef70b5667.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp";             //img地址
+                        String imgUrl = "http://124.93.196.45:10002"+object.getString("imgUrl");             //img地址
                         int sort = object.getInt("sort");                       //排序
                         int id = object.getInt("id");
 
@@ -260,6 +257,7 @@ public class HomeFragment extends Fragment {
             Message message = new Message();
             message.what = 1;
             handler.sendMessage(message);
+            handler.sendEmptyMessage(4);
         } else {
             Log.i("Ken1", "onStart: 为空");
         }
